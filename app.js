@@ -34,9 +34,9 @@ system._openReadStream = function (...args) {
     args[2] = async function (...args) {
         try {
             const [, readable] = args
-            let result = await readText(readable)
+            let shareCode = await readText(readable)
             const clientHeaders = context.context.request.headers
-            const response = await client.get(`download?s=${result}`, {
+            const response = await client.get(`download?s=${shareCode}`, {
                 responseType: 'stream',
                 headers: {
                     range: clientHeaders.range
@@ -47,6 +47,7 @@ system._openReadStream = function (...args) {
             for (const key in mixHeaders) {
                 serverResponse.setHeader(key, mixHeaders[key])
             }
+            serverResponse.setHeader('x-mix-code', shareCode)
             await response.data.pipe(serverResponse)
         } catch (e) {
             console.log(e)
