@@ -1,4 +1,3 @@
-// Typescript
 import {v2 as webdav} from 'webdav-server'
 import axios from "axios";
 import {decodeMixFile} from "./utils.js";
@@ -31,26 +30,29 @@ async function readText(readable) {
 system._openReadStream = function (...args) {
     const [path, context, callback] = args
     const serverResponse = context.context.response
-    args[2] = async function (...args) {
-        try {
-            const [, readable] = args
-            let shareCode = await readText(readable)
-            const clientHeaders = context.context.request.headers
-            const response = await client.get(`download?s=${shareCode}`, {
-                responseType: 'stream',
-                headers: {
-                    range: clientHeaders.range
+    const method = context.context.request.method
+    if (method === 'GET') {
+        args[2] = async function (...args) {
+            try {
+                const [, readable] = args
+                let shareCode = await readText(readable)
+                const clientHeaders = context.context.request.headers
+                const response = await client.get(`download?s=${shareCode}`, {
+                    responseType: 'stream',
+                    headers: {
+                        range: clientHeaders.range
+                    }
+                })
+                const mixHeaders = response.headers
+                serverResponse.statusCode = response.status
+                for (const key in mixHeaders) {
+                    serverResponse.setHeader(key, mixHeaders[key])
                 }
-            })
-            const mixHeaders = response.headers
-            serverResponse.statusCode = response.status
-            for (const key in mixHeaders) {
-                serverResponse.setHeader(key, mixHeaders[key])
+                serverResponse.setHeader('x-mix-code', shareCode)
+                await response.data.pipe(serverResponse)
+            } catch (e) {
+                console.log(e)
             }
-            serverResponse.setHeader('x-mix-code', shareCode)
-            await response.data.pipe(serverResponse)
-        } catch (e) {
-            console.log(e)
         }
     }
     return originOpenRead.apply(system, args)
@@ -58,13 +60,20 @@ system._openReadStream = function (...args) {
 
 const oOpenWrite = system._openWriteStream
 
+const oSize = system._size
+
 system._size = function (...args) {
     const [path, context, callback] = args
-    originOpenRead.apply(system, [path, context, async (_, readable) => {
-        const code = await readText(readable)
-        const size = decodeMixFile(code)?.s ?? 0
-        callback(null, size)
-    }])
+    const method = context.context.request.method
+    if (method === 'PROPFIND') {
+        originOpenRead.apply(system, [path, context, async (_, readable) => {
+            const code = await readText(readable)
+            const size = decodeMixFile(code)?.s ?? 0
+            callback(null, size)
+        }])
+        return
+    }
+    return oSize.apply(system, args)
 }
 
 const client = await axios.create({
@@ -77,20 +86,23 @@ system._openWriteStream = function (...args) {
     const fileSize = context.estimatedSize
     const fileName = path.paths.at(-1)
     const readStream = context.context.request
-    args[2] = async function (...args) {
-        try {
-            const [, writable] = args
-            const response = await client.put(`upload?name=${fileName}`, readStream, {
-                headers: {
-                    "Content-Length": fileSize
-                }
-            })
-            const shareCode = response.data
-            writable.write(shareCode)
-            callback(...args)
-            console.log(`文件上传成功: ${shareCode}`)
-        } catch (e) {
-            console.log(e)
+    const method = context.context.request.method
+    if (method === 'PUT') {
+        args[2] = async function (...args) {
+            try {
+                const [, writable] = args
+                const response = await client.put(`upload?name=${fileName}`, readStream, {
+                    headers: {
+                        "Content-Length": fileSize
+                    }
+                })
+                const shareCode = response.data
+                writable.write(shareCode)
+                callback(...args)
+                console.log(`文件上传成功: ${shareCode}`)
+            } catch (e) {
+                console.log(e)
+            }
         }
     }
     return oOpenWrite.apply(system, args)

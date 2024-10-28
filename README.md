@@ -7,4 +7,3 @@ alist中创建新的webdav驱动,填写http://ip:端口即可,例如http://127.0
 文件直链响应头x-mix-code为文件分享码 \
 文件目录结构和文件分享码储存在webdav.dat文件中 \
 mixfile只负责上传下载和解析分享码,即使更换mixfile服务器节点，数据也不会丢失 \
-目前不支持移动文件
