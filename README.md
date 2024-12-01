@@ -1,5 +1,5 @@
 ## MixFileWebDAV服务器
-# 注意: 需要先安装mixfile: [https://gitlab.com/ivgeek/mixfile](https://github.com/InvertGeek/MixFile)
+# 注意: 需要先安装mixfile: https://github.com/InvertGeek/MixFile
 可挂载到Alist中 \
 安装nodejs,输入npm i 安装依赖 \
 node app.js启动服务 \
