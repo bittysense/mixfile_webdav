@@ -1,2 +1,2 @@
-export const API_BASE = 'http://127.0.0.1:4719/api/'
-export const SERVER_PORT = 1900
+export const API_BASE = 'http://dav.bysense.ip-ddns.com/api/'
+export const SERVER_PORT = 80
